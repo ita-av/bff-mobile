@@ -1,7 +1,7 @@
 // src/routes/api.ts
 import { Router, Request, Response } from "express";
 import { RestService } from "./services/rest-service";
-// import { GrpcService } from '../services/grpc-service';
+import { GrpcService } from "./services/grpc-service";
 
 const router = Router();
 
@@ -51,5 +51,38 @@ router.get("/users", async (req: Request, res: Response) => {
 });
 
 // Booking Endpoints
+router.get("/bookings", async (req: Request, res: Response) => {
+  try {
+    const grpcService = new GrpcService(req.token);
+    const bookings = await grpcService.getUserBookings(req.body);
+    res.json(bookings);
+  } catch (error) {
+    res.status(503).json({ error: (error as Error).message });
+  }
+});
+
+router.post("/bookings", async (req: Request, res: Response) => {
+  try {
+    const grpcService = new GrpcService(req.token);
+    const bookingData = await grpcService.createBooking(req.body);
+    res.json(bookingData);
+  } catch (error) {
+    res.status(503).json({ error: (error as Error).message });
+  }
+});
+
+router.get("/barber/bookings", async (req: Request, res: Response) => {
+  try {
+    const grpcService = new GrpcService(req.token);
+    const { barberId, date } = req.query;
+    const bookings = await grpcService.getBarberBookings(
+      barberId as string,
+      date as string
+    );
+    res.json(bookings);
+  } catch (error) {
+    res.status(503).json({ error: (error as Error).message });
+  }
+});
 
 export default router;
