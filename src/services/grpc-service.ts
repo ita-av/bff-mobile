@@ -71,9 +71,11 @@ export class GrpcService {
     });
   }
 
-  getUserBookings(): Promise<BookingInterface[]> {
+  getUserBookings(userId: string): Promise<BookingInterface[]> {
     return new Promise((resolve, reject) => {
       const request = new GetUserBookingsRequest();
+      request.setUserId(userId);
+
       if (!this.metadata) {
         reject(new Error("Authentication metadata is required"));
         return;
@@ -92,9 +94,10 @@ export class GrpcService {
     });
   }
 
-  getBarberBookings(): Promise<BookingInterface[]> {
+  getBarberBookings(barberId: string): Promise<BookingInterface[]> {
     return new Promise((resolve, reject) => {
       const request = new GetBarberBookingsRequest();
+      request.setBarberId(barberId);
 
       if (!this.metadata) {
         reject(new Error("Authentication metadata is required"));

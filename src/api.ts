@@ -13,6 +13,12 @@ const endpoints: Record<string, string> = {
 };
 
 router.post("/login", async (req: Request, res: Response) => {
+  /*
+  body: {
+    email: string,
+    password: string
+  }
+  */
   try {
     const restService = new RestService(req.token);
     const { email, password } = req.body;
@@ -52,9 +58,15 @@ router.get("/users", async (req: Request, res: Response) => {
 
 // Booking Endpoints
 router.get("/bookings", async (req: Request, res: Response) => {
+  /*
+  body: {
+    user_id: string
+  }
+  */
   try {
     const grpcService = new GrpcService(req.token);
-    const bookings = await grpcService.getUserBookings(req.body);
+    const userId = req.body.user_id;
+    const bookings = await grpcService.getUserBookings(userId as string);
     res.json(bookings);
   } catch (error) {
     res.status(503).json({ error: (error as Error).message });
@@ -62,6 +74,14 @@ router.get("/bookings", async (req: Request, res: Response) => {
 });
 
 router.post("/bookings", async (req: Request, res: Response) => {
+  /**
+    {
+    user_id: string,
+    barber_id: string,
+    start_time: "2025-04-20T14:30:00Z",
+    service_type: string enum
+    }
+   */
   try {
     const grpcService = new GrpcService(req.token);
     const bookingData = await grpcService.createBooking(req.body);
@@ -72,13 +92,15 @@ router.post("/bookings", async (req: Request, res: Response) => {
 });
 
 router.get("/barber/bookings", async (req: Request, res: Response) => {
+  /*
+  body: {
+    barber_id: string
+  }
+  */
   try {
     const grpcService = new GrpcService(req.token);
-    const { barberId, date } = req.query;
-    const bookings = await grpcService.getBarberBookings(
-      barberId as string,
-      date as string
-    );
+    const barberId = req.body.barber_id;
+    const bookings = await grpcService.getBarberBookings(barberId as string);
     res.json(bookings);
   } catch (error) {
     res.status(503).json({ error: (error as Error).message });
