@@ -1,16 +1,15 @@
 // src/services/grpc-service.ts
 import * as grpc from "@grpc/grpc-js";
-import * as path from "path";
 import config from "../config";
 
 // Import the generated proto types
 import { BookingServiceClient } from "../proto/booking_grpc_pb";
 import {
   Booking,
-  BookingList,
   CreateBookingRequest,
   GetUserBookingsRequest,
   GetBarberBookingsRequest,
+  ServiceType,
 } from "../proto/booking_pb";
 
 export interface BookingInterface {
@@ -28,36 +27,41 @@ export interface BookingInterface {
 
 export class GrpcService {
   private client: BookingServiceClient;
+  private metadata: grpc.Metadata | undefined;
 
   constructor(authToken?: string) {
-    // Set up credentials
     let credentials = grpc.credentials.createInsecure();
-    const metadata = new grpc.Metadata();
-
-    if (authToken) {
-      metadata.add("authorization", `Bearer ${authToken}`);
-    }
-
-    // Create client
     this.client = new BookingServiceClient(
       `${config.grpc.host}:${config.grpc.port}`,
       credentials
     );
+
+    if (authToken) {
+      this.metadata = new grpc.Metadata();
+      this.metadata.add("authorization", `Bearer ${authToken}`);
+    }
   }
 
-  createBooking(bookingData: any): Promise<BookingInterface> {
+  createBooking(bookingData: BookingInterface): Promise<BookingInterface> {
     return new Promise((resolve, reject) => {
       const request = new CreateBookingRequest();
+      if (!this.metadata) {
+        reject(new Error("Authentication metadata is required"));
+        return;
+      }
+
       request.setUserId(bookingData.user_id);
       request.setBarberId(bookingData.barber_id);
       request.setStartTime(bookingData.start_time);
-      request.setServiceType(bookingData.service_type);
+      request.setServiceType(
+        ServiceType[bookingData.service_type as keyof typeof ServiceType]
+      );
 
       if (bookingData.notes) {
         request.setNotes(bookingData.notes);
       }
 
-      this.client.createBooking(request, (error, response) => {
+      this.client.createBooking(request, this.metadata, (error, response) => {
         if (error) {
           reject(new Error(`gRPC service error: ${error.message}`));
         } else {
@@ -67,12 +71,15 @@ export class GrpcService {
     });
   }
 
-  getUserBookings(userId: string): Promise<BookingInterface[]> {
+  getUserBookings(): Promise<BookingInterface[]> {
     return new Promise((resolve, reject) => {
       const request = new GetUserBookingsRequest();
-      request.setUserId(userId);
+      if (!this.metadata) {
+        reject(new Error("Authentication metadata is required"));
+        return;
+      }
 
-      this.client.getUserBookings(request, (error, response) => {
+      this.client.getUserBookings(request, this.metadata, (error, response) => {
         if (error) {
           reject(new Error(`gRPC service error: ${error.message}`));
         } else {
@@ -85,28 +92,29 @@ export class GrpcService {
     });
   }
 
-  getBarberBookings(
-    barberId: string,
-    date?: string
-  ): Promise<BookingInterface[]> {
+  getBarberBookings(): Promise<BookingInterface[]> {
     return new Promise((resolve, reject) => {
       const request = new GetBarberBookingsRequest();
-      request.setBarberId(barberId);
 
-      if (date) {
-        request.setDate(date);
+      if (!this.metadata) {
+        reject(new Error("Authentication metadata is required"));
+        return;
       }
 
-      this.client.getBarberBookings(request, (error, response) => {
-        if (error) {
-          reject(new Error(`gRPC service error: ${error.message}`));
-        } else {
-          const bookings = response
-            .getBookingsList()
-            .map((booking) => this.formatBooking(booking));
-          resolve(bookings);
+      this.client.getBarberBookings(
+        request,
+        this.metadata,
+        (error, response) => {
+          if (error) {
+            reject(new Error(`gRPC service error: ${error.message}`));
+          } else {
+            const bookings = response
+              .getBookingsList()
+              .map((booking) => this.formatBooking(booking));
+            resolve(bookings);
+          }
         }
-      });
+      );
     });
   }
 
